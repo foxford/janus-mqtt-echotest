@@ -1,0 +1,88 @@
+doctype html
+html(lang='en')
+	head
+		script(src='webrtc-adapter/adapter.js')
+
+	body
+		div
+			video#remote(autoplay)
+		script.
+			window.state_ = {
+				sessionId: null,
+				handleId: null,
+				pc: new RTCPeerConnection(null)
+			};
+			state_.pc.onicecandidate = (e) => { sendCandidate(state_.sessionId, state_.handleId, e.candidate); };
+			//state_.pc.ontrack = (e) => { console.log('pc track...', e); };
+			state_.pc.onaddstream = (e) => {
+				console.log('pc add stream...', e);
+				const remoteVideo = document.getElementById('remote');
+				remoteVideo.srcObject = e.stream;
+			};
+
+			// helper functions
+			const sendMessage = (message) => {
+				console.log('message sent: ', message);
+				wss.send(JSON.stringify(message));
+			};
+			const makeHex = (len) => {
+				let arr = new Uint8Array(len);
+				crypto.getRandomValues(arr);
+				return arr.reduce((acc, num) => {
+					let hex = num.toString(16);
+					return acc + (hex.length === 2 ? hex : '0' + hex);
+				}, '');
+			};
+			const makeTransactionId = () => makeHex(16);
+
+			// janus helper functions
+			const createSession = () => sendMessage({janus: 'create', transaction: makeTransactionId()});
+			const createHandler = (sessionId, packageName) => sendMessage({janus: 'attach', session_id: sessionId, plugin: packageName, transaction: makeTransactionId()});
+			const handleCreateSession = (message) => {const id = message.data.id; createHandler(id, 'janus.plugin.streaming'); return id; };
+			const handleAttachHandler = (message) => {const id = message.data.id; return id; };
+
+			// webrtc helper functions
+			const list = (sessionId, handleId) => sendMessage({janus: 'message', session_id: sessionId, handle_id: handleId, transaction: makeTransactionId(), body: {request: 'list'}});
+			const select = (sessionId, handleId, Id) => sendMessage({janus: 'message', session_id: sessionId, handle_id: handleId, transaction: makeTransactionId(), body: {request: 'watch', id: Id}});
+			const sendCandidate = (sessionId, handleId, candidate) => sendMessage({janus: 'trickle', session_id: sessionId, handle_id: handleId, transaction: makeTransactionId(), candidate: candidate});
+			const sendDesciption = (sessionId, handleId, desc) => sendMessage({janus: 'message', session_id: sessionId, handle_id: handleId, transaction: makeTransactionId(), body: {request: 'start'}, jsep: desc});
+			const handleOffer = (offer) => {
+				state_.pc.setRemoteDescription(new RTCSessionDescription(offer));
+				state_.pc
+					.createAnswer()
+					.then((desc) => {
+						console.log('answer: ', desc);
+						state_.pc.setLocalDescription(desc);
+						sendDesciption(state_.sessionId, state_.handleId, desc);
+					})
+					.catch((reason) => console.log('bad_answer', reason));
+			}
+
+			// wss
+			const wss = new WebSocket('ws://192.168.99.100:8188', ['janus-protocol']);
+			wss.addEventListener('open', (e) => {
+				console.log('wss openned...', e);
+				createSession();
+			});
+			wss.addEventListener('close', (e) => {
+				console.log('wss clossed...', e);
+			});
+			wss.addEventListener('error', (e) => {
+				console.log('wss error...', e);
+			});
+			wss.addEventListener('message', function (e) {
+				//console.log('wss message...', e);
+				const message = JSON.parse(e.data);
+				console.log('message received: ', message);
+				switch(message.janus) {
+					case 'success':
+						if (!state_.sessionId) { state_.sessionId = handleCreateSession(message); return; }
+						if (!state_.handleId) { state_.handleId = handleAttachHandler(message); select(state_.sessionId, state_.handleId, 1); return; }
+						if (message.plugindata) { console.log('plugin data received', message.plugindata); return; }
+						throw new TypeError('bad_state');
+					case 'event':
+						if (!state_.sessionId || !state_.handleId) { throw new TypeError('bad_state'); }
+						if (message.jsep && message.jsep.type === 'offer') { handleOffer(message.jsep); return; }
+						break;
+				}
+			});

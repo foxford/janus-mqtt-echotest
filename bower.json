@@ -1,0 +1,18 @@
+{
+	"name": "ex",
+	"version": "0.1.0",
+	"authors": [
+		"Andrei Nesterov <ae.nesterov@gmail.com>",
+		"Eugeny Tolchennikov <tolchennikov@gmail.com>"
+	],
+	"ignore": [
+		"**/.*",
+		"node_modules",
+		"bower_components",
+		"test",
+		"tests"
+	],
+	"dependencies": {
+		"webrtc-adapter": "#gh-pages"
+	}
+}

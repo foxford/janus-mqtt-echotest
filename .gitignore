@@ -1,0 +1,5 @@
+node_modules
+bower_components
+.idea
+.DC_Store
+_app
