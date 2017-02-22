@@ -7,7 +7,7 @@ Janus websocket (over MQTT) connection test
 ````
 ./run-docker.sh
 ````
-##Execute in docker container
+###Execute in docker container
 ````
 /opt/janus/bin/janus
 ````
@@ -16,7 +16,7 @@ Janus websocket (over MQTT) connection test
 npm install
 bower install
 ````
-##Start application
+###Start application
 ````
 npm start
 ````
