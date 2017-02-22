@@ -3,7 +3,7 @@ Janus websocket (over MQTT) connection test
 
 #Setup
 
-##Run docker (first-tab)
+##Run docker (first tab in console)
 ````
 ./run-docker.sh
 ````
@@ -11,7 +11,7 @@ Janus websocket (over MQTT) connection test
 ````
 /opt/janus/bin/janus
 ````
-##Install dependencies: (second-tab)
+##Install dependencies: (second tab in console)
 ````
 npm install
 bower install
@@ -21,7 +21,7 @@ bower install
 npm start
 ````
 
-##Execute video (third-tab)
+##Execute video (third tab in console)
 ````
  ffmpeg \
    -f lavfi -re -i "testsrc=duration=-1:size=1280x720:rate=15" \
